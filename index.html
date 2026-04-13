@@ -3,59 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Lịch Công Tác & Đội Xe</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Lịch Công Tác & Đội Xe - IT Dept</title>
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide-react@latest"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/locale/vi/index.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.0.1/index.min.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-        input[type="date"]::-webkit-inner-spin-button,
-        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
+        .animate-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-slate-50">
+<body>
     <div id="root"></div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-        window.FirebaseLib = { initializeApp, getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc, updateDoc, query, orderBy, getAuth, signInAnonymously, onAuthStateChanged };
-    </script>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
         const { 
-            format, addMonths, subMonths, startOfMonth, endOfMonth, 
-            startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, 
-            isSameDay, parseISO, isWithinInterval, addDays, nextDay, 
-            getDay, isBefore, isValid 
-        } = window.dateFns;
-        const viLocale = window.dateFns.locale.vi;
-
-        // Icons components
-        const LucideIcon = ({ name, size = 16, className = "" }) => {
-            const Icon = lucide[name] || lucide.HelpCircle;
-            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
-        };
-
-        const DriverIcon = ({ size = 16, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                <circle cx="12" cy="12" r="10" /><path d="M12 2a10 10 0 0 0-10 10" /><path d="M12 12l-5.5 8" /><path d="M12 12l5.5 8" /><path d="M12 12V2" /><circle cx="12" cy="12" r="2" />
-            </svg>
-        );
+            ChevronLeft, ChevronRight, Plus, Trash2, Edit2, Search, 
+            Settings, Car, MapPin, User, Calendar, AlertTriangle, CheckCircle2, X, CircleUserRound, UserCheck 
+        } = LucideReact;
 
         // --- CONFIG & CONSTANTS ---
         const firebaseConfig = {
@@ -64,24 +43,83 @@
             projectId: "dangkycongtac-3eb8a",
             storageBucket: "dangkycongtac-3eb8a.firebasestorage.app",
             messagingSenderId: "453381431200",
-            appId: "1:453381431200:web:89c9be0564a7575a068ec5"
+            appId: "1:453381431200:web:89c9be0564a7575a068ec5",
+            measurementId: "G-PZ62B9F89S"
         };
 
-        const EMPLOYEES = ["Cường", "Duy", "Dương", "Đoàn Minh Lý", "Hải", "Huy", "Kha", "Lũy", "Lượng", "Nguyễn Văn Lý", "Nhựt", "Phương", "Quy", "Sang", "Sơn", "Thành", "Thất", "Thiện", "Thủy", "Trung", "Trương", "Trường", "Việt"].sort((a, b) => a.localeCompare(b, 'vi'));
-        const VEHICLE_TYPES = { 'BT': { name: 'Bán tải', limit: 4 }, 'NM': { name: 'Kia Nhà máy', limit: 1 }, 'KB': { name: 'Kia Bình Tân', limit: 1 }, 'VN': { name: 'Xe Van', limit: 1 }, 'self': { name: 'Tự túc', limit: Infinity }, 'other': { name: 'Khác', limit: Infinity } };
-        const COLORS = ['#E53935','#8E24AA','#1E88E5','#00897B','#43A047','#FB8C00','#6D4C41','#00ACC1','#3949AB','#D81B60','#F4511E','#7CB342','#039BE5','#8D6E63','#5E35B1','#00BFA5','#C0CA33','#FF7043','#26A69A','#AB47BC','#FDD835','#29B6F6'];
-        const NATIONAL_HOLIDAYS_2026 = { '2026-01-01': 'Tết Dương lịch', '2026-01-28': 'Tết Nguyên Đán', '2026-04-30': 'Ngày Giải Phóng', '2026-05-01': 'Quốc tế Lao Động', '2026-09-02': 'Quốc khánh' };
-        const DESTINATIONS = { 'MIỀN TÂY': ["An Giang", "Cần Thơ", "Long An", "Tiền Giang", "Vĩnh Long"], 'MIỀN ĐÔNG': ["Bình Dương", "Đồng Nai", "Vũng Tàu"], 'KHÁC': ["TP. Hồ Chí Minh", "Khác (tự nhập)"] };
-
-        const ADMIN_PASS = "123456";
+        // Initialize Firebase Compat mode
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const db = firebase.firestore();
         const appId = 'it-dept-schedule-v2';
+        const ADMIN_PASS = "123456";
+
+        // Import date-fns functions from window
+        const { 
+            format, addMonths, subMonths, startOfMonth, endOfMonth, 
+            startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, 
+            isSameDay, parseISO, isWithinInterval, addDays, nextDay, 
+            getDay, isBefore, isValid 
+        } = dateFns;
+
+        const DriverIcon = ({ size = 16, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 2a10 10 0 0 0-10 10" />
+                <path d="M12 12l-5.5 8" />
+                <path d="M12 12l5.5 8" />
+                <path d="M12 12V2" />
+                <circle cx="12" cy="12" r="2" />
+            </svg>
+        );
+
+        const EMPLOYEES = ["Cường", "Duy", "Dương", "Đoàn Minh Lý", "Hải", "Huy", "Kha", "Lũy", "Lượng", "Nguyễn Văn Lý", "Nhựt", "Phương", "Quy", "Sang", "Sơn", "Thành", "Thất", "Thiện", "Thủy", "Trung", "Trương", "Trường", "Việt"].sort((a, b) => a.localeCompare(b, 'vi'));
+
+        const VEHICLE_TYPES = {
+            'BT': { name: 'Bán tải', limit: 4 },
+            'NM': { name: 'Kia Nhà máy', limit: 1 },
+            'KB': { name: 'Kia Bình Tân', limit: 1 },
+            'VN': { name: 'Xe Van', limit: 1 },
+            'self': { name: 'Tự túc', limit: Infinity },
+            'other': { name: 'Khác', limit: Infinity }
+        };
+
+        const COLORS = ['#E53935','#8E24AA','#1E88E5','#00897B','#43A047','#FB8C00','#6D4C41','#00ACC1','#3949AB','#D81B60','#F4511E','#7CB342','#039BE5','#8D6E63','#5E35B1','#00BFA5','#C0CA33','#FF7043','#26A69A','#AB47BC','#FDD835','#29B6F6'];
+
+        const NATIONAL_HOLIDAYS_2026 = {
+            '2026-01-01': 'Tết Dương lịch', '2026-01-28': 'Tết Nguyên Đán', '2026-01-29': 'Tết Nguyên Đán',
+            '2026-01-30': 'Tết Nguyên Đán', '2026-01-31': 'Tết Nguyên Đán', '2026-02-01': 'Tết Nguyên Đán',
+            '2026-02-02': 'Tết Nguyên Đán', '2026-02-03': 'Tết Nguyên Đán', '2026-04-26': 'Giỗ Tổ Hùng Vương',
+            '2026-04-27': 'Nghỉ bù Giỗ Tổ', '2026-04-30': 'Ngày Giải Phóng', '2026-05-01': 'Quốc tế Lao Động',
+            '2026-09-02': 'Quốc khánh', '2026-09-03': 'Nghỉ bù Quốc khánh',
+        };
+
+        const DESTINATIONS = {
+            'MIỀN TÂY': ["An Giang", "Bạc Liêu", "Bến Tre", "Cà Mau", "Cần Thơ", "Đồng Tháp", "Hậu Giang", "Kiên Giang", "Long An", "Sóc Trăng", "Tiền Giang", "Trà Vinh", "Vĩnh Long"].sort((a,b)=>a.localeCompare(b,'vi')),
+            'MIỀN ĐÔNG': ["Bà Rịa - Vũng Tàu", "Bình Dương", "Bình Phước", "Đồng Nai", "Tây Ninh", "Lâm Đồng"].sort((a,b)=>a.localeCompare(b,'vi')),
+            'MIỀN TRUNG': ["Bình Định", "Bình Thuận", "Đà Nẵng", "Hà Tĩnh", "Khánh Hoà", "Nghệ An", "Ninh Thuận", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Trị", "Thừa Thiên Huế"].sort((a,b)=>a.localeCompare(b,'vi')),
+            'KHÁC': ["Hà Nội", "TP. Hồ Chí Minh", "Khác (tự nhập)"]
+        };
+
+        const normalizeName = (name) => name ? name.trim().toLowerCase() : "";
+        const getEmployeeColor = (name, customColors = {}) => {
+            const norm = normalizeName(name);
+            if (customColors[norm]) return customColors[norm];
+            const idx = EMPLOYEES.indexOf(name);
+            if (idx !== -1) return COLORS[idx % COLORS.length];
+            return '#94a3b8';
+        };
 
         function App() {
             const [user, setUser] = useState(null);
             const [currentMonth, setCurrentMonth] = useState(new Date(2026, 3, 1));
             const [schedules, setSchedules] = useState([]);
             const [companyHolidays, setCompanyHolidays] = useState([]);
+            const [employeeColors, setEmployeeColors] = useState({});
             const [editingId, setEditingId] = useState(null);
+            const [loading, setLoading] = useState(true);
             const [activeTab, setActiveTab] = useState('business');
             const [searchQuery, setSearchQuery] = useState("");
             const [showAdminModal, setShowAdminModal] = useState(false);
@@ -92,31 +130,48 @@
             const [formData, setFormData] = useState({
                 employeeName: '', customEmployee: '', destination: '', customDestination: '',
                 vehicle: '', vehicleNote: '', hasDriver: false,
-                startDate: '2026-04-01', endDate: '2026-04-01',
+                startDate: format(new Date(2026, 3, 1), 'yyyy-MM-dd'), endDate: '',
                 eventName: '', eventDesc: '', eventColor: '#1E88E5'
             });
 
             useEffect(() => {
-                const { initializeApp, getFirestore, getAuth, signInAnonymously, onAuthStateChanged, onSnapshot, query, collection, doc } = window.FirebaseLib;
-                const app = initializeApp(firebaseConfig);
-                const db = getFirestore(app);
-                const auth = getAuth(app);
-
-                signInAnonymously(auth).catch(console.error);
-                onAuthStateChanged(auth, setUser);
-
-                if (db) {
-                    onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'schedules')), (snap) => {
-                        setSchedules(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                        setTimeout(() => lucide.createIcons(), 100);
-                    });
-                    onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'company_holidays')), (snap) => {
-                        setCompanyHolidays(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                    });
-                }
+                auth.signInAnonymously().catch(err => console.error("Auth error", err));
+                return auth.onAuthStateChanged(setUser);
             }, []);
 
-            useEffect(() => { lucide.createIcons(); }, [activeTab, schedules, currentMonth]);
+            useEffect(() => {
+                if (!user) return;
+                const unsubSchedules = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('schedules')
+                    .onSnapshot(snap => {
+                        setSchedules(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                        setLoading(false);
+                    });
+                
+                const unsubHolidays = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('company_holidays')
+                    .onSnapshot(snap => setCompanyHolidays(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+                
+                const unsubColors = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('employee_colors')
+                    .onSnapshot(snap => {
+                        const mapping = {};
+                        snap.docs.forEach(doc => mapping[doc.id] = doc.data().color);
+                        setEmployeeColors(mapping);
+                    });
+                
+                return () => { unsubSchedules(); unsubHolidays(); unsubColors(); };
+            }, [user]);
+
+            const calculateDefaultEndDate = (startDateStr) => {
+                if (!startDateStr) return "";
+                const start = parseISO(startDateStr);
+                if (!isValid(start)) return "";
+                const dayOfWeek = getDay(start);
+                if (dayOfWeek === 6 || dayOfWeek === 0) return startDateStr;
+                return format(nextDay(start, 6), 'yyyy-MM-dd');
+            };
+
+            useEffect(() => {
+                if (!editingId) setFormData(prev => ({ ...prev, endDate: calculateDefaultEndDate(prev.startDate) }));
+            }, [formData.startDate, editingId]);
 
             const showToast = (msg, type = 'success') => {
                 setToast({ msg, type });
@@ -125,152 +180,309 @@
 
             const handleRegister = async (e) => {
                 if (e) e.preventDefault();
-                const { getFirestore, collection, addDoc, updateDoc, doc } = window.FirebaseLib;
-                const db = getFirestore();
+                const { employeeName, customEmployee, destination, customDestination, vehicle, vehicleNote, hasDriver, startDate, endDate, eventName, eventColor } = formData;
+                const finalEmployee = employeeName === 'Khác (Tự nhập)' ? customEmployee : employeeName;
+                const finalDest = destination === 'Khác (tự nhập)' ? customDestination : destination;
+                
+                if (activeTab === 'business') {
+                    if (!finalEmployee || !finalDest || !vehicle || !startDate || !endDate) return showToast("Vui lòng nhập đầy đủ thông tin", "error");
+                } else {
+                    if (!eventName || !startDate || !endDate) return showToast("Vui lòng nhập tên sự kiện và ngày", "error");
+                }
 
-                const finalEmployee = formData.employeeName === 'Khác (Tự nhập)' ? formData.customEmployee : formData.employeeName;
-                const finalDest = formData.destination === 'Khác (tự nhập)' ? formData.customDestination : formData.destination;
+                if (isBefore(parseISO(endDate), parseISO(startDate))) return showToast("Ngày kết thúc không được nhỏ hơn ngày bắt đầu", "error");
 
-                const payload = {
-                    type: activeTab,
-                    startDate: formData.startDate,
-                    endDate: formData.endDate,
-                    createdAt: new Date().toISOString(),
-                    ...(activeTab === 'business' ? {
-                        employeeName: finalEmployee,
-                        destination: finalDest,
-                        vehicle: formData.vehicle,
-                        hasDriver: formData.hasDriver,
-                        color: COLORS[EMPLOYEES.indexOf(finalEmployee) % COLORS.length] || '#94a3b8'
-                    } : {
-                        eventName: formData.eventName,
-                        eventDesc: formData.eventDesc,
-                        color: formData.eventColor
-                    })
-                };
+                if (activeTab === 'business') {
+                    const hasConflict = schedules.some(s => s.type === 'business' && normalizeName(s.employeeName) === normalizeName(finalEmployee) && s.id !== editingId && s.startDate <= endDate && s.endDate >= startDate);
+                    if (hasConflict) return setConfirmDialog({ title: "Trùng lịch nhân viên", message: `Nhân viên ${finalEmployee} đã có lịch công tác trong khoảng ngày này.`, type: 'error' });
+                }
+
+                const datesInRange = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) }).map(d => format(d, 'yyyy-MM-dd'));
+                const foundHolidays = datesInRange.filter(d => NATIONAL_HOLIDAYS_2026[d] || companyHolidays.some(ch => d >= ch.startDate && d <= ch.endDate));
+                
+                if (foundHolidays.length > 0 && !formData.confirmedHoliday) {
+                    return setConfirmDialog({
+                        title: "Cảnh báo ngày nghỉ",
+                        message: `Lịch có chứa ngày nghỉ: ${foundHolidays.map(d => NATIONAL_HOLIDAYS_2026[d] || "Nghỉ công ty").join(", ")}. Vẫn muốn tiếp tục?`,
+                        type: 'warning',
+                        onConfirm: () => {
+                            setFormData(prev => ({ ...prev, confirmedHoliday: true }));
+                            setConfirmDialog(null);
+                            setTimeout(() => handleRegister(), 100);
+                        }
+                    });
+                }
+
+                if (activeTab === 'business' && !['self', 'other'].includes(vehicle)) {
+                    for (let day of datesInRange) {
+                        const used = schedules.filter(s => s.type === 'business' && s.vehicle === vehicle && s.id !== editingId && s.startDate <= day && s.endDate >= day).length;
+                        if (used >= VEHICLE_TYPES[vehicle].limit) return setConfirmDialog({ title: "Hết xe", message: `Xe ${VEHICLE_TYPES[vehicle].name} đã hết vào ngày ${day}.`, type: 'error' });
+                    }
+                }
 
                 try {
+                    const payload = {
+                        type: activeTab, startDate, endDate, createdAt: new Date().toISOString(),
+                        ...(activeTab === 'business' ? { employeeName: finalEmployee, destination: finalDest, vehicle, vehicleNote, hasDriver, color: getEmployeeColor(finalEmployee, employeeColors) } 
+                        : { eventName, eventDesc: formData.eventDesc, color: eventColor })
+                    };
+                    const collectionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('schedules');
                     if (editingId) {
-                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', editingId), payload);
+                        await collectionRef.doc(editingId).update(payload);
                         showToast("Cập nhật thành công!");
                     } else {
-                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'schedules'), payload);
+                        await collectionRef.add(payload);
                         showToast("Đăng ký thành công!");
                     }
-                    setEditingId(null);
-                    setFormData(prev => ({ ...prev, employeeName: '', eventName: '' }));
-                } catch (err) {
-                    showToast("Lỗi hệ thống", "error");
+                    if (activeTab === 'business' && employeeName === 'Khác (Tự nhập)') {
+                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('employee_colors').doc(normalizeName(customEmployee)).set({ color: payload.color });
+                    }
+                    resetForm();
+                } catch (err) { showToast("Lỗi khi lưu dữ liệu", "error"); }
+            };
+
+            const resetForm = () => {
+                setFormData({
+                    employeeName: '', customEmployee: '', destination: '', customDestination: '',
+                    vehicle: '', vehicleNote: '', hasDriver: false,
+                    startDate: format(currentMonth, 'yyyy-MM-dd'), endDate: calculateDefaultEndDate(format(currentMonth, 'yyyy-MM-dd')),
+                    eventName: '', eventDesc: '', eventColor: '#1E88E5', confirmedHoliday: false
+                });
+                setEditingId(null);
+            };
+
+            const handleEdit = (item) => {
+                setActiveTab(item.type);
+                setEditingId(item.id);
+                if (item.type === 'business') {
+                    const isCustomEmp = !EMPLOYEES.includes(item.employeeName);
+                    const isCustomDest = !Object.values(DESTINATIONS).flat().includes(item.destination);
+                    setFormData({
+                        ...formData,
+                        employeeName: isCustomEmp ? 'Khác (Tự nhập)' : item.employeeName,
+                        customEmployee: isCustomEmp ? item.employeeName : '',
+                        destination: isCustomDest ? 'Khác (tự nhập)' : item.destination,
+                        customDestination: isCustomDest ? item.destination : '',
+                        vehicle: item.vehicle, vehicleNote: item.vehicleNote || '', hasDriver: item.hasDriver || false,
+                        startDate: item.startDate, endDate: item.endDate
+                    });
+                } else {
+                    setFormData({ ...formData, eventName: item.eventName, eventDesc: item.eventDesc || '', eventColor: item.color, startDate: item.startDate, endDate: item.endDate });
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const confirmDelete = async () => {
+                if (deleteConfirmation.password === ADMIN_PASS) {
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('schedules').doc(deleteConfirmation.id).delete();
+                    showToast("Đã xóa lịch");
+                    setDeleteConfirmation(null);
+                } else {
+                    showToast("Sai mật khẩu Admin", "error");
                 }
             };
 
             const calendarDays = useMemo(() => {
                 const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
                 const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
-                return eachDayOfInterval({ start, end });
+                const days = eachDayOfInterval({ start, end });
+                while (days.length < 42) days.push(addDays(days[days.length - 1], 1));
+                return days;
             }, [currentMonth]);
 
+            const slotOrder = useMemo(() => {
+                const mStart = startOfMonth(currentMonth);
+                const mEnd = endOfMonth(currentMonth);
+                const monthSchedules = schedules.filter(s => (parseISO(s.startDate) <= mEnd && parseISO(s.endDate) >= mStart))
+                    .sort((a, b) => a.startDate.localeCompare(b.startDate) || (a.createdAt || "").localeCompare(b.createdAt || ""));
+                const mapping = {};
+                monthSchedules.forEach((s, i) => mapping[s.id] = i);
+                return mapping;
+            }, [schedules, currentMonth]);
+
+            const filteredHistory = useMemo(() => {
+                const monthStr = format(currentMonth, 'yyyy-MM');
+                return schedules.filter(s => s.startDate.startsWith(monthStr)).filter(s => {
+                    const term = searchQuery.toLowerCase();
+                    return s.type === 'business' ? (s.employeeName.toLowerCase().includes(term) || s.destination.toLowerCase().includes(term)) : (s.eventName?.toLowerCase().includes(term));
+                }).sort((a, b) => b.startDate.localeCompare(a.startDate));
+            }, [schedules, currentMonth, searchQuery]);
+
             return (
-                <div className="min-h-screen pb-12">
-                    {/* Toast */}
+                <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-12">
                     {toast && (
-                        <div className={`fixed top-4 right-4 z-[100] px-6 py-3 rounded-lg shadow-xl flex items-center gap-3 bg-slate-800 text-white`}>
-                            {toast.msg}
+                        <div className={`fixed top-4 right-4 z-[100] px-6 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-in ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'} text-white`}>
+                            {toast.type === 'error' ? <AlertTriangle size={20}/> : <CheckCircle2 size={20}/>} {toast.msg}
                         </div>
                     )}
 
-                    <header className="bg-white border-b sticky top-0 z-30 shadow-sm h-16 flex items-center justify-between px-6">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-blue-600 p-2 rounded-lg text-white"><LucideIcon name="Calendar" size={20}/></div>
-                            <h1 className="font-black uppercase tracking-tight">IT Schedule 2026</h1>
+                    {deleteConfirmation && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+                            <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+                                <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={32}/></div>
+                                <h3 className="text-xl font-bold mb-2">Xác nhận xóa</h3>
+                                <p className="text-slate-500 text-sm mb-6">Nhập mật khẩu Admin để hoàn tất.</p>
+                                <input type="password" placeholder="Mật khẩu Admin..." autoFocus className="w-full p-3 border rounded-lg mb-4 text-center text-lg tracking-widest outline-none focus:ring-2 focus:ring-red-500" 
+                                    onKeyDown={(e) => e.key === 'Enter' && confirmDelete()}
+                                    onChange={(e) => setDeleteConfirmation({...deleteConfirmation, password: e.target.value})}/>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setDeleteConfirmation(null)} className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">HỦY</button>
+                                    <button onClick={confirmDelete} className="flex-1 py-3 font-bold bg-red-600 text-white hover:bg-red-700 rounded-lg">XÓA</button>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-                            <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-white rounded-md"><LucideIcon name="ChevronLeft" /></button>
-                            <div className="px-4 font-bold uppercase text-sm">{format(currentMonth, 'MMMM / yyyy', { locale: viLocale })}</div>
-                            <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-white rounded-md"><LucideIcon name="ChevronRight" /></button>
+                    )}
+
+                    {confirmDialog && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+                            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+                                <div className={`p-4 flex items-center gap-3 text-white ${confirmDialog.type === 'error' ? 'bg-red-500' : 'bg-amber-500'}`}>
+                                    <AlertTriangle size={24}/> <h3 className="font-bold text-lg">{confirmDialog.title}</h3>
+                                </div>
+                                <div className="p-6 text-slate-600">{confirmDialog.message}</div>
+                                <div className="p-4 bg-slate-50 flex justify-end gap-3">
+                                    <button onClick={() => setConfirmDialog(null)} className="px-4 py-2 rounded-lg hover:bg-slate-200">Đóng</button>
+                                    {confirmDialog.onConfirm && <button onClick={confirmDialog.onConfirm} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Tiếp tục</button>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <header className="bg-white border-b sticky top-0 z-30 shadow-sm">
+                        <div className="max-w-[1600px] mx-auto px-4 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <Calendar className="text-blue-600" size={28} />
+                                <h1 className="text-xl font-black tracking-tight hidden sm:block uppercase">Lịch Công Tác & Đội Xe</h1>
+                            </div>
+                            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+                                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-white rounded-md"><ChevronLeft size={20}/></button>
+                                <div className="px-4 font-bold text-lg min-w-[160px] text-center uppercase">Tháng {format(currentMonth, 'MM / yyyy')}</div>
+                                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-white rounded-md"><ChevronRight size={20}/></button>
+                            </div>
+                            <div className="w-10"></div>
                         </div>
                     </header>
 
                     <main className="max-w-[1600px] mx-auto p-4 flex flex-col md:flex-row gap-6">
-                        {/* Sidebar Form */}
-                        <div className="w-full md:w-[350px] shrink-0">
-                            <div className="bg-white rounded-xl border shadow-sm overflow-hidden sticky top-20">
+                        <div className="w-full md:w-[380px] shrink-0">
+                            <div className="bg-white rounded-xl border shadow-sm sticky top-20 overflow-hidden">
                                 <div className="flex border-b">
-                                    <button onClick={() => setActiveTab('business')} className={`flex-1 py-4 font-bold text-xs ${activeTab === 'business' ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>CÔNG TÁC</button>
-                                    <button onClick={() => setActiveTab('event')} className={`flex-1 py-4 font-bold text-xs ${activeTab === 'event' ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>SỰ KIỆN</button>
+                                    {['business', 'event'].map(tab => (
+                                        <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-4 font-bold transition-all ${activeTab === tab ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-400 hover:bg-slate-50'}`}>
+                                            {tab === 'business' ? 'CÔNG TÁC' : 'SỰ KIỆN'}
+                                        </button>
+                                    ))}
                                 </div>
                                 <form onSubmit={handleRegister} className="p-5 space-y-4">
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Nhân viên / Sự kiện</label>
-                                        {activeTab === 'business' ? (
-                                            <select value={formData.employeeName} onChange={e => setFormData({...formData, employeeName: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 border rounded-lg outline-none text-sm">
-                                                <option value="">Chọn...</option>
-                                                {EMPLOYEES.map(e => <option key={e} value={e}>{e}</option>)}
-                                            </select>
-                                        ) : (
-                                            <input value={formData.eventName} onChange={e => setFormData({...formData, eventName: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 border rounded-lg text-sm" placeholder="Tên sự kiện..." />
-                                        )}
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Từ ngày</label>
-                                            <input type="date" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 border rounded-lg text-sm" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Đến ngày</label>
-                                            <input type="date" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 border rounded-lg text-sm" />
-                                        </div>
-                                    </div>
-                                    {activeTab === 'business' && (
+                                    {activeTab === 'business' ? (
                                         <>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Điểm đến</label>
-                                                <select value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 border rounded-lg text-sm">
-                                                    <option value="">Chọn...</option>
-                                                    {Object.entries(DESTINATIONS).map(([g, items]) => (
-                                                        <optgroup label={g} key={g}>{items.map(i => <option key={i} value={i}>{i}</option>)}</optgroup>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><User size={14}/> Nhân viên *</label>
+                                                <select value={formData.employeeName} onChange={(e) => setFormData({...formData, employeeName: e.target.value})} className="w-full p-2.5 rounded-lg border bg-slate-50 outline-none" required>
+                                                    <option value="">-- Chọn nhân viên --</option>
+                                                    {EMPLOYEES.map(e => <option key={e} value={e}>{e}</option>)}
+                                                    <option value="Khác (Tự nhập)">Khác (Tự nhập)</option>
+                                                </select>
+                                                {formData.employeeName === 'Khác (Tự nhập)' && <input placeholder="Tên nhân viên..." className="w-full mt-2 p-2.5 rounded-lg border" value={formData.customEmployee} onChange={(e) => setFormData({...formData, customEmployee: e.target.value})} required />}
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><MapPin size={14}/> Điểm đến *</label>
+                                                <select value={formData.destination} onChange={(e) => setFormData({...formData, destination: e.target.value})} className="w-full p-2.5 rounded-lg border bg-slate-50 outline-none" required>
+                                                    <option value="">-- Chọn điểm đến --</option>
+                                                    {Object.entries(DESTINATIONS).map(([group, towns]) => (
+                                                        <optgroup label={group} key={group}>{towns.map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
                                                     ))}
                                                 </select>
+                                                {formData.destination === 'Khác (tự nhập)' && <input placeholder="Địa điểm..." className="w-full mt-2 p-2.5 rounded-lg border" value={formData.customDestination} onChange={(e) => setFormData({...formData, customDestination: e.target.value})} required />}
                                             </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Phương tiện</label>
-                                                <select value={formData.vehicle} onChange={e => setFormData({...formData, vehicle: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 border rounded-lg text-sm">
-                                                    {Object.entries(VEHICLE_TYPES).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
-                                                </select>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><Car size={14}/> Xe *</label>
+                                                <div className="flex gap-2">
+                                                    <select value={formData.vehicle} onChange={(e) => setFormData({...formData, vehicle: e.target.value})} className="flex-1 p-2.5 rounded-lg border bg-slate-50 outline-none" required>
+                                                        <option value="">-- Chọn xe --</option>
+                                                        {Object.entries(VEHICLE_TYPES).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+                                                    </select>
+                                                    <label className={`flex items-center gap-2 px-3 py-1 rounded-lg border cursor-pointer transition-all ${formData.hasDriver ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}>
+                                                        <input type="checkbox" className="hidden" checked={formData.hasDriver} onChange={(e) => setFormData({...formData, hasDriver: e.target.checked})}/>
+                                                        <DriverIcon size={18}/> <span className="text-[10px] font-bold uppercase">Tài xế</span>
+                                                    </label>
+                                                </div>
+                                                {formData.vehicle === 'other' && <input placeholder="Ghi chú xe..." className="w-full mt-2 p-2.5 rounded-lg border" value={formData.vehicleNote} onChange={(e) => setFormData({...formData, vehicleNote: e.target.value})}/>}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Tên sự kiện *</label>
+                                                <input placeholder="Họp, bảo trì..." className="w-full p-2.5 rounded-lg border bg-slate-50 outline-none" value={formData.eventName} onChange={(e) => setFormData({...formData, eventName: e.target.value})} required />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Màu sắc</label>
+                                                <input type="color" className="w-full h-10 p-1 rounded-lg border bg-white cursor-pointer" value={formData.eventColor} onChange={(e) => setFormData({...formData, eventColor: e.target.value})} />
                                             </div>
                                         </>
                                     )}
-                                    <button className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-100 hover:bg-blue-700">
-                                        {editingId ? "CẬP NHẬT" : "ĐĂNG KÝ NGAY"}
-                                    </button>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Bắt đầu *</label>
+                                            <input type="date" className="w-full p-2.5 rounded-lg border bg-slate-50 outline-none" value={formData.startDate} onChange={(e) => setFormData({...formData, startDate: e.target.value})} required />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Kết thúc *</label>
+                                            <input type="date" className={`w-full p-2.5 rounded-lg border outline-none ${isBefore(parseISO(formData.endDate), parseISO(formData.startDate)) ? 'border-red-500 ring-red-200' : 'bg-slate-50'}`} value={formData.endDate} onChange={(e) => setFormData({...formData, endDate: e.target.value})} required />
+                                        </div>
+                                    </div>
+                                    <div className="pt-2 flex gap-2">
+                                        <button type="submit" disabled={isBefore(parseISO(formData.endDate), parseISO(formData.startDate))} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 uppercase">
+                                            {editingId ? 'Cập nhật' : 'Đăng ký'}
+                                        </button>
+                                        {editingId && <button type="button" onClick={resetForm} className="px-4 bg-slate-200 text-slate-600 rounded-xl hover:bg-slate-300">HỦY</button>}
+                                    </div>
                                 </form>
                             </div>
                         </div>
 
-                        {/* Calendar */}
-                        <div className="flex-1 space-y-6">
-                            <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-                                <div className="calendar-grid bg-slate-900 text-[10px] text-white font-bold text-center py-2">
-                                    {['T2','T3','T4','T5','T6','T7','CN'].map(d => <div key={d}>{d}</div>)}
+                        <div className="flex-1">
+                            <div className="bg-white rounded-xl border shadow-sm overflow-hidden mb-8">
+                                <div className="grid grid-cols-7 border-b bg-slate-900 text-white">
+                                    {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d, i) => <div key={d} className={`py-3 text-center text-xs font-black tracking-widest ${i === 6 ? 'bg-red-700' : ''}`}>{d}</div>)}
                                 </div>
-                                <div className="calendar-grid auto-rows-[120px]">
-                                    {calendarDays.map((day, idx) => {
+                                <div className="grid grid-cols-7 auto-rows-[minmax(120px,auto)]">
+                                    {calendarDays.map((day) => {
                                         const dayStr = format(day, 'yyyy-MM-dd');
-                                        const isCurr = isSameMonth(day, currentMonth);
-                                        const daySchedules = schedules.filter(s => dayStr >= s.startDate && dayStr <= s.endDate);
-                                        
+                                        const isCurrentMonth = isSameMonth(day, currentMonth);
+                                        const isSunday = getDay(day) === 0;
+                                        const natHoliday = NATIONAL_HOLIDAYS_2026[dayStr];
+                                        const comHoliday = companyHolidays.find(ch => dayStr >= ch.startDate && dayStr <= ch.endDate);
+                                        const daySchedules = schedules.filter(s => dayStr >= s.startDate && dayStr <= s.endDate).sort((a, b) => (slotOrder[a.id] || 0) - (slotOrder[b.id] || 0));
+
                                         return (
-                                            <div key={idx} className={`border-b border-r p-1 ${!isCurr ? 'bg-slate-50 opacity-30' : ''}`}>
-                                                <div className="text-xs font-bold text-slate-400 mb-1">{format(day, 'd')}</div>
-                                                <div className="space-y-1">
-                                                    {daySchedules.map(s => (
-                                                        <div 
-                                                            key={s.id} 
-                                                            onClick={() => { setEditingId(s.id); setFormData(s); }}
-                                                            className="text-[9px] text-white px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80"
-                                                            style={{ backgroundColor: s.color }}
-                                                        >
-                                                            {s.employeeName || s.eventName}
+                                            <div key={dayStr} className={`border-b border-r p-1 relative ${!isCurrentMonth ? 'bg-slate-50 opacity-40' : ''} ${natHoliday ? 'bg-red-50' : comHoliday ? 'bg-amber-50' : ''}`}>
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className={`text-sm font-bold ${isSunday || natHoliday ? 'text-red-600' : 'text-slate-400'}`}>{format(day, 'd')}</span>
+                                                    {isCurrentMonth && (
+                                                        <div className="flex flex-wrap justify-end gap-1 max-w-[70%]">
+                                                            {['BT', 'NM', 'KB', 'VN'].map(vt => {
+                                                                const avail = VEHICLE_TYPES[vt].limit - schedules.filter(s => s.type === 'business' && s.vehicle === vt && dayStr >= s.startDate && dayStr <= s.endDate).length;
+                                                                return <span key={vt} className={`text-[8px] font-black px-0.5 rounded ${avail > 0 ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>{vt}:{avail}</span>;
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {(natHoliday || comHoliday) && isCurrentMonth && (
+                                                    <div className="flex flex-col gap-0.5 mb-1">
+                                                        {natHoliday && <span className="text-[9px] text-red-600 bg-red-100 px-1 rounded truncate font-bold">{natHoliday}</span>}
+                                                        {comHoliday && <span className="text-[9px] text-amber-600 bg-amber-100 px-1 rounded truncate font-bold">{comHoliday.name}</span>}
+                                                    </div>
+                                                )}
+                                                <div className="space-y-0.5">
+                                                    {daySchedules.map(item => (
+                                                        <div key={item.id} onClick={() => handleEdit(item)} className="text-[10px] md:text-xs mb-0.5 px-1 py-0.5 rounded text-white truncate cursor-pointer hover:brightness-90 flex items-center gap-1" style={{ backgroundColor: item.color }}>
+                                                            <span className="font-bold flex items-center gap-1">
+                                                                {item.hasDriver && <DriverIcon size={10} className="shrink-0"/>}
+                                                                {item.type === 'business' ? item.employeeName : item.eventName}
+                                                            </span>
+                                                            {item.startDate === dayStr && item.type === 'business' && <span className="opacity-90 font-normal">- {VEHICLE_TYPES[item.vehicle]?.name} - {item.destination}</span>}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -279,16 +491,88 @@
                                     })}
                                 </div>
                             </div>
+
+                            <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                                <div className="p-4 bg-slate-50 border-b flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <h2 className="font-black text-slate-700 flex items-center gap-2 uppercase"><Search size={20}/> Danh sách tháng {format(currentMonth, 'MM/yyyy')}</h2>
+                                    <input placeholder="Tìm tên, điểm đến..." className="w-full sm:w-64 px-4 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead>
+                                            <tr className="bg-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                                                <th className="px-6 py-4">Đối tượng</th>
+                                                <th className="px-6 py-4">Lịch trình</th>
+                                                <th className="px-6 py-4">Điểm đến / Ghi chú</th>
+                                                <th className="px-6 py-4">Xe</th>
+                                                <th className="px-6 py-4">Tài xế</th>
+                                                <th className="px-6 py-4 text-right">Thao tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {filteredHistory.map(item => (
+                                                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-6 py-4 font-bold text-slate-800">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 rounded-full" style={{backgroundColor: item.color}}></div>
+                                                            {item.type === 'business' ? item.employeeName : item.eventName}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{format(parseISO(item.startDate), 'dd/MM')} → {format(parseISO(item.endDate), 'dd/MM')}</td>
+                                                    <td className="px-6 py-4 font-medium text-slate-700">{item.type === 'business' ? item.destination : <span className="italic text-slate-400">{item.eventDesc || "---"}</span>}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {item.type === 'business' ? <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold">{VEHICLE_TYPES[item.vehicle]?.name}</span> : "---"}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {item.type === 'business' ? (item.hasDriver ? <div className="flex items-center gap-1 text-emerald-600 font-bold text-[10px]"><UserCheck size={16}/> CÓ TX</div> : <span className="text-slate-300 text-[10px] uppercase">Tự lái</span>) : "---"}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                                                        <button onClick={() => handleEdit(item)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 size={16}/></button>
+                                                        <button onClick={() => setDeleteConfirmation({id: item.id, password: ""})} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16}/></button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </main>
 
-                    {/* Admin Trigger */}
-                    <button 
-                        onClick={() => { if(prompt("Pass:") === ADMIN_PASS) alert("Admin Mode On"); }}
-                        className="fixed bottom-6 right-6 w-12 h-12 bg-slate-800 text-white rounded-full flex items-center justify-center shadow-xl"
-                    >
-                        <LucideIcon name="Settings" />
-                    </button>
+                    <button onClick={() => { const pass = prompt("Nhập mật khẩu Admin:"); if (pass === ADMIN_PASS) setShowAdminModal(true); else if (pass !== null) showToast("Sai mật khẩu", "error"); }} className="fixed bottom-6 right-6 w-14 h-14 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40"><Settings size={24}/></button>
+
+                    {showAdminModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                                <div className="p-6 bg-slate-900 text-white flex justify-between items-center"><h3 className="text-xl font-black uppercase">Quản lý ngày nghỉ</h3><button onClick={() => setShowAdminModal(false)} className="p-1 hover:bg-white/20 rounded"><X/></button></div>
+                                <div className="p-6 overflow-y-auto space-y-6">
+                                    <div className="bg-slate-50 p-4 rounded-xl border-2 border-dashed border-slate-200">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                            <div className="sm:col-span-2"><label className="text-xs font-bold mb-1 block uppercase">Tên ngày nghỉ</label><input id="holiday-name" className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-slate-900"/></div>
+                                            <div><label className="text-xs font-bold mb-1 block uppercase">Từ ngày</label><input id="holiday-start" type="date" className="w-full p-2.5 rounded-lg border"/></div>
+                                            <div><label className="text-xs font-bold mb-1 block uppercase">Đến ngày</label><input id="holiday-end" type="date" className="w-full p-2.5 rounded-lg border"/></div>
+                                        </div>
+                                        <button onClick={async () => { 
+                                            const name = document.getElementById('holiday-name').value; 
+                                            const start = document.getElementById('holiday-start').value; 
+                                            const end = document.getElementById('holiday-end').value || start; 
+                                            if (!name || !start) return showToast("Vui lòng điền đủ thông tin", "error"); 
+                                            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('company_holidays').add({ name, startDate: start, endDate: end }); 
+                                            document.getElementById('holiday-name').value = ''; showToast("Đã thêm ngày nghỉ công ty"); 
+                                        }} className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold uppercase tracking-wide">Thêm ngày nghỉ</button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {companyHolidays.sort((a,b) => b.startDate.localeCompare(a.startDate)).map(h => (
+                                            <div key={h.id} className="flex items-center justify-between p-4 bg-white border rounded-xl">
+                                                <div><p className="font-bold text-slate-800 uppercase text-xs">{h.name}</p><p className="text-xs text-slate-500">{h.startDate} → {h.endDate}</p></div>
+                                                <button onClick={async () => { if (confirm("Xóa ngày nghỉ này?")) await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('company_holidays').doc(h.id).delete(); }} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={18}/></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
