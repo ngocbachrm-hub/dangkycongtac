@@ -733,10 +733,81 @@
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    #login-gate {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; background: #0f172a;
+    }
+    #login-box {
+      background: #1e293b; border-radius: 16px; padding: 40px 36px;
+      width: 100%; max-width: 360px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+    #login-box h1 { color: #f1f5f9; font-size: 20px; font-weight: 900; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 1px; }
+    #login-box p { color: #64748b; font-size: 13px; margin: 0 0 28px; }
+    #login-box input {
+      width: 100%; padding: 14px; border: 2px solid #334155; border-radius: 10px;
+      background: #0f172a; color: #f1f5f9; font-size: 20px; text-align: center;
+      letter-spacing: 6px; outline: none; margin-bottom: 14px;
+      transition: border-color 0.2s;
+    }
+    #login-box input:focus { border-color: #3b82f6; }
+    #login-box input.error { border-color: #ef4444; animation: shake 0.3s; }
+    #login-box button {
+      width: 100%; padding: 14px; background: #3b82f6; color: white;
+      border: none; border-radius: 10px; font-size: 15px; font-weight: 700;
+      cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+      transition: background 0.2s;
+    }
+    #login-box button:hover { background: #2563eb; }
+    #login-error { color: #ef4444; font-size: 13px; margin-top: 10px; height: 18px; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
   </style>
+  <script>
+    const APP_PASS = "1357911";
+    const SESSION_KEY = "atk_auth";
+
+    function checkLogin() {
+      if (sessionStorage.getItem(SESSION_KEY) === "ok") showApp();
+    }
+
+    function showApp() {
+      document.getElementById('login-gate').style.display = 'none';
+      document.getElementById('root').style.display = 'block';
+    }
+
+    function tryLogin() {
+      const val = document.getElementById('pass-input').value;
+      if (val === APP_PASS) {
+        sessionStorage.setItem(SESSION_KEY, "ok");
+        showApp();
+      } else {
+        const input = document.getElementById('pass-input');
+        const err = document.getElementById('login-error');
+        input.classList.add('error');
+        err.textContent = "Sai mật khẩu, thử lại!";
+        input.value = '';
+        setTimeout(() => { input.classList.remove('error'); err.textContent = ''; }, 1500);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', checkLogin);
+  </script>
 </head>
 <body>
-  <div id="root">
+  <div id="login-gate">
+    <div id="login-box">
+      <h1>🔒 Lịch Công Tác</h1>
+      <p>Nhập mật khẩu để tiếp tục</p>
+      <input id="pass-input" type="password" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter') tryLogin()" autofocus />
+      <button onclick="tryLogin()">Đăng nhập</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+  <div id="root" style="display:none;">
     <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#64748b;">
       Đang tải ứng dụng...
     </div>
