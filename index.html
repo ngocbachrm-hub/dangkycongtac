@@ -359,34 +359,33 @@
         ),
 
         // Confirm Dialog
-               {/* View Item Popup */}
-        {viewingItem && (
-          e('div', { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" },
-            e('div', { className: "bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden" },
-              e('div', { className: "p-4 text-white font-bold text-lg flex justify-between items-center", style: { backgroundColor: viewingItem.color } },
-                e('span', null, viewingItem.type === 'business' ? viewingItem.employeeName : viewingItem.eventName),
-                e('button', { onClick: () => setViewingItem(null), className: "p-1 hover:bg-white/20 rounded" }, e(X, null))
-              ),
-              e('div', { className: "p-6 space-y-3 text-sm" },
-                viewingItem.type === 'business'
-                  ? e(React.Fragment, null,
-                      e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Điểm đến"), e('span', { className: "font-bold" }, viewingItem.destination)),
-                      e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Xe"), e('span', { className: "font-bold" }, VEHICLE_TYPES[viewingItem.vehicle]?.name)),
-                      e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Tài xế"), e('span', { className: "font-bold" }, viewingItem.hasDriver ? "Có tài xế" : "Tự lái")),
-                      e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Lịch"), e('span', { className: "font-bold" }, `${viewingItem.startDate} → ${viewingItem.endDate}`))
-                    )
-                  : e(React.Fragment, null,
-                      e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Lịch"), e('span', { className: "font-bold" }, `${viewingItem.startDate} → ${viewingItem.endDate}`)),
-                      viewingItem.eventDesc && e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Ghi chú"), e('span', { className: "font-bold" }, viewingItem.eventDesc))
-                    )
-              ),
-              e('div', { className: "p-4 bg-slate-50 flex justify-end gap-3" },
-                e('button', { onClick: () => setViewingItem(null), className: "px-4 py-2 rounded-lg hover:bg-slate-200" }, "Đóng"),
-                e('button', { onClick: () => handleEditWithAuth(viewingItem), className: "px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold flex items-center gap-2" }, e(Edit2, { size: 14 }), "Chỉnh sửa")
-              )
+             // Confirm Dialog
+        viewingItem && e('div', { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" },
+          e('div', { className: "bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden" },
+            e('div', { className: "p-4 text-white font-bold text-lg flex justify-between items-center", style: { backgroundColor: viewingItem.color } },
+              e('span', null, viewingItem.type === 'business' ? viewingItem.employeeName : viewingItem.eventName),
+              e('button', { onClick: () => setViewingItem(null), className: "p-1 hover:bg-white/20 rounded" }, e(X, null))
+            ),
+            e('div', { className: "p-6 space-y-3 text-sm" },
+              viewingItem.type === 'business'
+                ? e(React.Fragment, null,
+                    e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Điểm đến"), e('span', { className: "font-bold" }, viewingItem.destination)),
+                    e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Xe"), e('span', { className: "font-bold" }, VEHICLE_TYPES[viewingItem.vehicle]?.name)),
+                    e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Tài xế"), e('span', { className: "font-bold" }, viewingItem.hasDriver ? "Có tài xế" : "Tự lái")),
+                    e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Lịch"), e('span', { className: "font-bold" }, `${viewingItem.startDate} → ${viewingItem.endDate}`))
+                  )
+                : e(React.Fragment, null,
+                    e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Lịch"), e('span', { className: "font-bold" }, `${viewingItem.startDate} → ${viewingItem.endDate}`)),
+                    viewingItem.eventDesc && e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Ghi chú"), e('span', { className: "font-bold" }, viewingItem.eventDesc))
+                  )
+            ),
+            e('div', { className: "p-4 bg-slate-50 flex justify-end gap-3" },
+              e('button', { onClick: () => setViewingItem(null), className: "px-4 py-2 rounded-lg hover:bg-slate-200" }, "Đóng"),
+              e('button', { onClick: () => handleEditWithAuth(viewingItem), className: "px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold flex items-center gap-2" }, e(Edit2, { size: 14 }), "Chỉnh sửa")
             )
           )
         ),
+        confirmDialog && e('div', { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" },
         confirmDialog && e('div', { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" },
           e('div', { className: "bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden" },
             e('div', { className: `p-4 flex items-center gap-3 text-white ${confirmDialog.type === 'error' ? 'bg-red-500' : 'bg-amber-500'}` },
