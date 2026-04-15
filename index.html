@@ -358,8 +358,7 @@
           )
         ),
 
-        // Confirm Dialog
-             // Confirm Dialog
+        // View Item Popup
         viewingItem && e('div', { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" },
           e('div', { className: "bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden" },
             e('div', { className: "p-4 text-white font-bold text-lg flex justify-between items-center", style: { backgroundColor: viewingItem.color } },
@@ -385,7 +384,6 @@
             )
           )
         ),
-        confirmDialog && e('div', { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" },
         confirmDialog && e('div', { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" },
           e('div', { className: "bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden" },
             e('div', { className: `p-4 flex items-center gap-3 text-white ${confirmDialog.type === 'error' ? 'bg-red-500' : 'bg-amber-500'}` },
