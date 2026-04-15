@@ -135,6 +135,8 @@
       const [deleteConfirmation, setDeleteConfirmation] = useState(null);
       const [toast, setToast] = useState(null);
       const [confirmDialog, setConfirmDialog] = useState(null);
+      const [viewingItem, setViewingItem] = useState(null);
+
 
       const [formData, setFormData] = useState({
         employeeName: '', customEmployee: '', destination: '', customDestination: '',
@@ -260,7 +262,10 @@
         setEditingId(null);
       };
 
-      const handleEdit = (item) => {
+    const handleEditWithAuth = (item) => {
+        const pass = prompt("Nhập mật khẩu Admin để chỉnh sửa:");
+        if (pass !== ADMIN_PASS) { if (pass !== null) showToast("Sai mật khẩu Admin", "error"); return; }
+        setViewingItem(null);
         setActiveTab(item.type);
         setEditingId(item.id);
         if (item.type === 'business') {
@@ -354,6 +359,34 @@
         ),
 
         // Confirm Dialog
+               {/* View Item Popup */}
+        {viewingItem && (
+          e('div', { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" },
+            e('div', { className: "bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden" },
+              e('div', { className: "p-4 text-white font-bold text-lg flex justify-between items-center", style: { backgroundColor: viewingItem.color } },
+                e('span', null, viewingItem.type === 'business' ? viewingItem.employeeName : viewingItem.eventName),
+                e('button', { onClick: () => setViewingItem(null), className: "p-1 hover:bg-white/20 rounded" }, e(X, null))
+              ),
+              e('div', { className: "p-6 space-y-3 text-sm" },
+                viewingItem.type === 'business'
+                  ? e(React.Fragment, null,
+                      e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Điểm đến"), e('span', { className: "font-bold" }, viewingItem.destination)),
+                      e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Xe"), e('span', { className: "font-bold" }, VEHICLE_TYPES[viewingItem.vehicle]?.name)),
+                      e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Tài xế"), e('span', { className: "font-bold" }, viewingItem.hasDriver ? "Có tài xế" : "Tự lái")),
+                      e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Lịch"), e('span', { className: "font-bold" }, `${viewingItem.startDate} → ${viewingItem.endDate}`))
+                    )
+                  : e(React.Fragment, null,
+                      e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Lịch"), e('span', { className: "font-bold" }, `${viewingItem.startDate} → ${viewingItem.endDate}`)),
+                      viewingItem.eventDesc && e('div', { className: "flex justify-between" }, e('span', { className: "text-slate-400" }, "Ghi chú"), e('span', { className: "font-bold" }, viewingItem.eventDesc))
+                    )
+              ),
+              e('div', { className: "p-4 bg-slate-50 flex justify-end gap-3" },
+                e('button', { onClick: () => setViewingItem(null), className: "px-4 py-2 rounded-lg hover:bg-slate-200" }, "Đóng"),
+                e('button', { onClick: () => handleEditWithAuth(viewingItem), className: "px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold flex items-center gap-2" }, e(Edit2, { size: 14 }), "Chỉnh sửa")
+              )
+            )
+          )
+        ),
         confirmDialog && e('div', { className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" },
           e('div', { className: "bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden" },
             e('div', { className: `p-4 flex items-center gap-3 text-white ${confirmDialog.type === 'error' ? 'bg-red-500' : 'bg-amber-500'}` },
@@ -644,7 +677,7 @@
                             : "---"
                         ),
                         e('td', { className: "px-6 py-4 text-right space-x-2 whitespace-nowrap" },
-                          e('button', { onClick: () => handleEdit(item), className: "p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" }, e(Edit2, { size: 16 })),
+                          e('button', { onClick: () => handleEditWithAuth(item), className: "p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" }, e(Edit2, { size: 16 })),
                           e('button', { onClick: () => setDeleteConfirmation({ id: item.id, password: "" }), className: "p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" }, e(Trash2, { size: 16 }))
                         )
                       )
