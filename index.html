@@ -214,15 +214,31 @@
         }
         const datesInRange = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) }).map(d => format(d, 'yyyy-MM-dd'));
         const foundHolidays = datesInRange.filter(d => NATIONAL_HOLIDAYS_2026[d] || companyHolidays.some(ch => d >= ch.startDate && d <= ch.endDate));
-        if (foundHolidays.length > 0 && !formData.confirmedHoliday) {
+if (foundHolidays.length > 0 && !formData.confirmedHoliday) {
           return setConfirmDialog({
             title: "Cảnh báo ngày nghỉ",
             message: `Lịch có chứa ngày nghỉ: ${foundHolidays.map(d => NATIONAL_HOLIDAYS_2026[d] || "Nghỉ công ty").join(", ")}. Vẫn muốn tiếp tục?`,
             type: 'warning',
-            onConfirm: () => {
-              setFormData(prev => ({ ...prev, confirmedHoliday: true }));
+            onConfirm: async () => {
               setConfirmDialog(null);
-              setTimeout(() => handleRegister(), 100);
+              try {
+                const payload = {
+                  type: activeTab, startDate, endDate, createdAt: new Date().toISOString(),
+                  ...(activeTab === 'business'
+                    ? { employeeName: finalEmployee, destination: finalDest, vehicle, vehicleNote, hasDriver, color: getEmployeeColor(finalEmployee, employeeColors) }
+                    : { eventName, eventDesc: formData.eventDesc, color: eventColor })
+                };
+                if (editingId) {
+                  await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', editingId), payload);
+                  showToast("Cập nhật thành công!");
+                } else {
+                  await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'schedules'), payload);
+                  showToast("Đăng ký thành công!");
+                }
+                if (activeTab === 'business' && employeeName === 'Khác (Tự nhập)')
+                  await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'employee_colors', normalizeName(customEmployee)), { color: payload.color });
+                resetForm();
+              } catch (err) { showToast("Lỗi khi lưu dữ liệu", "error"); }
             }
           });
         }
